@@ -10,7 +10,8 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-return pd.read_csv("lexicon_enhanced.csv", encoding='utf-8')
+    return pd.read_csv("lexicon_enhanced.csv", encoding='utf-8')
+
 def remove_diacritics(text):
     if pd.isna(text):
         return ""
@@ -101,15 +102,15 @@ st.markdown("""
         display: inline;
     }
 
-    .term-info {
-        color: #666;
+    .term-root {
+        color: #888;
         font-size: 1.05em;
         display: inline;
         margin-right: 20px;
     }
 
-    .term-root {
-        color: #888;
+    .term-info {
+        color: #666;
         font-size: 1.05em;
         display: inline;
         margin-right: 8px;
