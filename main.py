@@ -10,7 +10,7 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    return pd.read_csv("lexicon_enhanced.csv", encoding='utf-8')
+    return pd.read_csv("lexicon.csv", encoding='utf-8')
 
 def remove_diacritics(text):
     if pd.isna(text):
@@ -104,9 +104,16 @@ st.markdown("""
 
     .term-info {
         color: #666;
-        font-size: 1.1em;
+        font-size: 1.05em;
         display: inline;
-        margin-right: 10px;
+        margin-right: 20px;
+    }
+
+    .term-root {
+        color: #888;
+        font-size: 1.05em;
+        display: inline;
+        margin-right: 8px;
     }
 
     .term-english {
@@ -176,7 +183,7 @@ st.markdown('<div class="main-title">المُعْجَمُ اللِّسَانِي
 st.markdown('<div class="subtitle">مُعْجَمٌ عَرَبِيٌّ-إِنْجِلِيزِيٌّ لِلْمُصْطَلَحَاتِ اللِّسَانِيَّةِ الْحَاسُوبِيَّةِ</div>', unsafe_allow_html=True)
 
 st.markdown('<div class="search-container">', unsafe_allow_html=True)
-search = st.text_input("بحث", placeholder="ابْحَثْ عَنْ مُصْطَلَحٍ (بِتَشْكِيلٍ أَوْ بِدُونِهِ)...", label_visibility="collapsed")
+search = st.text_input("بحث", placeholder="ابْحَثْ عَنْ مُصْطَلَحٍ...", label_visibility="collapsed")
 search_button = st.button("بَحْثٌ")
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -198,10 +205,12 @@ if search_button or search:
                 html += '<div class="term-header">'
                 html += f'<span class="term-arabic">{row["المصطلح العربي"]}</span>'
 
-                # إضافة المعلومات الإضافية بين أقواس
-                info_parts = []
+                # إضافة الجذر في قوس مستقل
                 if pd.notna(row["الجذر"]) and str(row["الجذر"]).strip():
-                    info_parts.append(row["الجذر"])
+                    html += f'<span class="term-root">[{row["الجذر"]}]</span>'
+
+                # إضافة المعلومات الإضافية (الوزن ومعلومات إضافية) في قوس آخر
+                info_parts = []
                 if pd.notna(row["الوزن"]) and str(row["الوزن"]).strip():
                     info_parts.append(row["الوزن"])
                 if pd.notna(row["معلومات إضافية"]) and str(row["معلومات إضافية"]).strip():
@@ -246,9 +255,6 @@ else:
         <div style="font-size: 1.05em; color: #6c757d; margin-top: 9px;">
             اكْتُبْ مُصْطَلَحًا عَرَبِيًّا أَوْ إِنْجِلِيزِيًّا فِي حَقْلِ الْبَحْثِ
         </div>
-        <div style="font-size: 0.92em; color: #6c757d; margin-top: 13px;">
-            يُمْكِنُكَ الْبَحْثُ بِتَشْكِيلٍ أَوْ بِدُونِهِ
-        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -256,5 +262,6 @@ st.markdown('''
 <div style="text-align: center; color: #a8dadc; padding: 28px 18px; direction: rtl; margin-top: 35px; border-top: 1px solid rgba(168, 218, 220, 0.3);">
     <div style="font-size: 1.15em; font-weight: 700; color: #4ecdc4; margin-bottom: 7px;">مَعْهَدُ الدَّوْحَةِ لِلدِّرَاسَاتِ الْعُلْيَا</div>
     <div style="font-size: 0.95em;">الْمُعْجَمُ اللِّسَانِيُّ الْحَاسُوبِيُّ</div>
+    <div style="font-size: 0.85em; color: #f0ad4e; margin-top: 10px;">⚙️ هٰذَا الْمُعْجَمُ فِي طَوْرِ التَّطْوِيرِ الْمُسْتَمِرِّ</div>
 </div>
 ''', unsafe_allow_html=True)
