@@ -10,8 +10,7 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    return pd.read_csv("lexicon.csv", encoding='utf-8')
-
+return pd.read_csv("lexicon_enhanced.csv", encoding='utf-8')
 def remove_diacritics(text):
     if pd.isna(text):
         return ""
