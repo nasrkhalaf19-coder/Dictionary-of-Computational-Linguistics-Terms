@@ -45,8 +45,10 @@ def remove_diacritics(text):
     return arabic_diacritics.sub('', str(text))
 
 df = load_data()
-df['المصطلح_بدون_تشكيل'] = df['المصطلح العربي'].apply(remove_diacritics)
-df['التعريف_بدون_تشكيل'] = df['التعريف'].apply(remove_diacritics)
+if not df.empty:
+    df.columns = [c.strip() for c in df.columns]
+    df['المصطلح_بدون_تشكيل'] = df['المصطلح العربي'].apply(remove_diacritics)
+    df['التعريف_بدون_تشكيل'] = df['التعريف'].apply(remove_diacritics)
 
 st.markdown("""
 <style>
@@ -207,18 +209,29 @@ st.markdown('<div class="subtitle">مُعْجَمٌ عَرَبِيٌّ-إِنْ�
 
 st.markdown('<div class="search-container">', unsafe_allow_html=True)
 search = st.text_input("بحث", placeholder="ابْحَثْ عَنْ مُصْطَلَحٍ...", label_visibility="collapsed")
-search_button = st.button("بَحْثٌ")
+col1, col2 = st.columns([1, 1])
+with col1:
+    search_button = st.button("بَحْثٌ")
+with col2:
+    deep_search = st.checkbox("بَحْثٌ فِي التَّعْرِيفِ أَيْضًا")
 st.markdown('</div>', unsafe_allow_html=True)
 
-if search_button or search:
+if df.empty:
+    st.warning("لَا تُوجَدُ بَيَانَاتٌ. تَأَكَّدْ مِنْ وُجُودِ مَلَفَّاتِ lexicon_*.csv")
+elif search_button or search:
     if search:
         search_clean = remove_diacritics(search)
 
-        results = df[
+        # البحث في اسم المصطلح والمقابل الإنجليزي فقط
+        mask = (
             df["المصطلح_بدون_تشكيل"].str.contains(search_clean, na=False, case=False) |
-            df["المقابل الإنجليزي"].str.contains(search, na=False, case=False) |
-            df["التعريف_بدون_تشكيل"].str.contains(search_clean, na=False, case=False)
-        ]
+            df["المقابل الإنجليزي"].str.contains(search, na=False, case=False)
+        )
+        # توسيع البحث للتعريف إذا اختار المستخدم
+        if deep_search:
+            mask = mask | df["التعريف_بدون_تشكيل"].str.contains(search_clean, na=False, case=False)
+
+        results = df[mask]
 
         if not results.empty:
             st.success(f"عُثِرَ عَلَى {len(results)} نَتِيجَةٍ")
@@ -229,14 +242,10 @@ if search_button or search:
                 html += f'<span class="term-arabic">{row["المصطلح العربي"]}</span>'
                 html += f'<span class="term-english">{row["المقابل الإنجليزي"]}</span>'
 
-                # قسم الكلام والوزن - بعيداً عن المصطلح
-                info_parts = []
-                if pd.notna(row["الوزن"]) and str(row["الوزن"]).strip():
-                    info_parts.append(row["الوزن"])
-                if pd.notna(row["معلومات إضافية"]) and str(row["معلومات إضافية"]).strip():
-                    info_parts.append(row["معلومات إضافية"])
-                if info_parts:
-                    html += f'<span class="term-pos">{" | ".join(info_parts)}</span>'
+                # قسم الكلام
+                pos_col = "أقسام الكلام" if "أقسام الكلام" in row.index else "الوزن"
+                if pos_col in row.index and pd.notna(row[pos_col]) and str(row[pos_col]).strip():
+                    html += f'<span class="term-pos">{row[pos_col]}</span>'
 
                 # الجذر - بعيداً عن المصطلح
                 if pd.notna(row["الجذر"]) and str(row["الجذر"]).strip():
