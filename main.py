@@ -17,7 +17,7 @@ def load_data():
     frames = []
     for f in csv_files:
         try:
-            frames.append(pd.read_csv(f, encoding='utf-8'))
+            frames.append(pd.read_csv(f, encoding='utf-8-sig'))
         except Exception:
             pass
     if not frames:
