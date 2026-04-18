@@ -10,7 +10,23 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    return pd.read_csv("lexicon_enhanced.csv", encoding='utf-8')
+    import glob
+    csv_files = sorted(glob.glob("lexicon_*.csv"))
+    if not csv_files:
+        return pd.DataFrame()
+    frames = []
+    for f in csv_files:
+        try:
+            frames.append(pd.read_csv(f, encoding='utf-8'))
+        except Exception:
+            pass
+    if not frames:
+        return pd.DataFrame()
+    df = pd.concat(frames, ignore_index=True)
+    df = df.drop_duplicates(subset=["المقابل الإنجليزي"], keep="last")
+    # تسجيل أسماء الملفات المحمّلة
+    st.session_state['loaded_files'] = [f.replace('lexicon_', '').replace('.csv', '') for f in csv_files]
+    return df
 
 def remove_diacritics(text):
     if pd.isna(text):
@@ -92,35 +108,42 @@ st.markdown("""
     }
 
     .term-header {
-        margin-bottom: 15px;
+        display: flex;
+        align-items: baseline;
+        gap: 18px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
     }
 
     .term-arabic {
         color: #1a1a1a;
         font-size: 1.9em;
         font-weight: 800;
-        display: inline;
-    }
-
-    .term-root {
-        color: #888;
-        font-size: 1.05em;
-        display: inline;
-        margin-right: 20px;
-    }
-
-    .term-info {
-        color: #666;
-        font-size: 1.05em;
-        display: inline;
-        margin-right: 8px;
     }
 
     .term-english {
         color: #4ecdc4;
         font-size: 1.3em;
         font-weight: 600;
-        margin: 10px 0 16px 0;
+    }
+
+    .term-pos {
+        background: #e8f5e9;
+        color: #2e7d32;
+        font-size: 0.95em;
+        font-weight: 600;
+        padding: 3px 14px;
+        border-radius: 15px;
+        margin-right: auto;
+    }
+
+    .term-root {
+        background: #fff3e0;
+        color: #e65100;
+        font-size: 0.95em;
+        font-weight: 600;
+        padding: 3px 14px;
+        border-radius: 15px;
     }
 
     .section-title {
@@ -204,23 +227,22 @@ if search_button or search:
                 html = '<div class="result-card">'
                 html += '<div class="term-header">'
                 html += f'<span class="term-arabic">{row["المصطلح العربي"]}</span>'
+                html += f'<span class="term-english">{row["المقابل الإنجليزي"]}</span>'
 
-                # إضافة الجذر في قوس مستقل
-                if pd.notna(row["الجذر"]) and str(row["الجذر"]).strip():
-                    html += f'<span class="term-root">[{row["الجذر"]}]</span>'
-
-                # إضافة المعلومات الإضافية (الوزن ومعلومات إضافية) في قوس آخر
+                # قسم الكلام والوزن - بعيداً عن المصطلح
                 info_parts = []
                 if pd.notna(row["الوزن"]) and str(row["الوزن"]).strip():
                     info_parts.append(row["الوزن"])
                 if pd.notna(row["معلومات إضافية"]) and str(row["معلومات إضافية"]).strip():
                     info_parts.append(row["معلومات إضافية"])
-
                 if info_parts:
-                    html += f'<span class="term-info">[{" | ".join(info_parts)}]</span>'
+                    html += f'<span class="term-pos">{" | ".join(info_parts)}</span>'
+
+                # الجذر - بعيداً عن المصطلح
+                if pd.notna(row["الجذر"]) and str(row["الجذر"]).strip():
+                    html += f'<span class="term-root">{row["الجذر"]}</span>'
 
                 html += '</div>'
-                html += f'<div class="term-english">{row["المقابل الإنجليزي"]}</div>'
 
                 html += '<div class="section-title">التَّعْرِيفُ:</div>'
                 html += f'<div class="term-definition">{row["التعريف"]}</div>'
@@ -235,10 +257,14 @@ if search_button or search:
                     html += '<div class="section-title">مِثَالٌ:</div>'
                     html += f'<div class="term-example">{row["المثال"]}</div>'
 
-                    if pd.notna(row["المصدر المثال"]) and str(row["المصدر المثال"]).strip():
-                        example_source = f'{row["المصدر المثال"]}'
-                        if pd.notna(row["صفحة المثال"]) and str(row["صفحة المثال"]).strip():
-                            example_source += f'، ص {row["صفحة المثال"]}'
+                    # إذا كان مصدر المثال فارغاً، يُنسخ تلقائياً من مصدر التعريف
+                    ex_source = row["المصدر المثال"] if pd.notna(row["المصدر المثال"]) and str(row["المصدر المثال"]).strip() else row.get("المصدر التعريف", "")
+                    ex_page = row["صفحة المثال"] if pd.notna(row["صفحة المثال"]) and str(row["صفحة المثال"]).strip() else row.get("صفحة التعريف", "")
+
+                    if pd.notna(ex_source) and str(ex_source).strip():
+                        example_source = f'{ex_source}'
+                        if pd.notna(ex_page) and str(ex_page).strip():
+                            example_source += f'، ص {ex_page}'
                         html += f'<div class="source-box">{example_source}</div>'
 
                 html += '</div>'
