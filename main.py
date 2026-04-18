@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import re
+import glob
 
 st.set_page_config(
     page_title="المعجم اللساني الحاسوبي",
@@ -10,7 +11,6 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    import glob
     csv_files = sorted(glob.glob("lexicon_*.csv"))
     if not csv_files:
         return pd.DataFrame()
@@ -19,43 +19,37 @@ def load_data():
         try:
             frames.append(pd.read_csv(f, encoding='utf-8-sig'))
         except Exception:
-            pass
+            try:
+                frames.append(pd.read_csv(f, encoding='utf-8'))
+            except Exception:
+                pass
     if not frames:
         return pd.DataFrame()
     df = pd.concat(frames, ignore_index=True)
-    df = df.drop_duplicates(subset=["المقابل الإنجليزي"], keep="last")
-    # تسجيل أسماء الملفات المحمّلة
-    st.session_state['loaded_files'] = [f.replace('lexicon_', '').replace('.csv', '') for f in csv_files]
+    df.columns = [c.strip() for c in df.columns]
+    if "المقابل الإنجليزي" in df.columns:
+        df = df.drop_duplicates(subset=["المقابل الإنجليزي"], keep="last")
     return df
 
 def remove_diacritics(text):
     if pd.isna(text):
         return ""
-    arabic_diacritics = re.compile("""
-                             ّ    | # Tashdid
-                             َ    | # Fatha
-                             ً    | # Tanwin Fath
-                             ُ    | # Damma
-                             ٌ    | # Tanwin Damm
-                             ِ    | # Kasra
-                             ٍ    | # Tanwin Kasr
-                             ْ    | # Sukun
-                             ـ     # Tatwil/Kashida
-                         """, re.VERBOSE)
+    arabic_diacritics = re.compile(
+        '[\u0617-\u061A\u064B-\u0652\u0656-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED\u0640]'
+    )
     return arabic_diacritics.sub('', str(text))
 
 df = load_data()
 if not df.empty:
-    df.columns = [c.strip() for c in df.columns]
     df['المصطلح_بدون_تشكيل'] = df['المصطلح العربي'].apply(remove_diacritics)
-    df['التعريف_بدون_تشكيل'] = df['التعريف'].apply(remove_diacritics)
+    if 'التعريف' in df.columns:
+        df['التعريف_بدون_تشكيل'] = df['التعريف'].apply(remove_diacritics)
 
 st.markdown("""
 <style>
     .stApp {
         background: linear-gradient(135deg, #1a2332 0%, #2d4a6e 100%);
     }
-
     .main-title {
         text-align: center;
         color: #4ecdc4;
@@ -64,7 +58,6 @@ st.markdown("""
         margin: 25px 0 12px 0;
         direction: rtl;
     }
-
     .subtitle {
         text-align: center;
         color: #a8dadc;
@@ -72,12 +65,10 @@ st.markdown("""
         margin-bottom: 25px;
         direction: rtl;
     }
-
     .search-container {
         max-width: 700px;
         margin: 0 auto 30px auto;
     }
-
     .stTextInput > div > div > input {
         text-align: right;
         direction: rtl;
@@ -85,7 +76,6 @@ st.markdown("""
         padding: 11px 16px;
         border-radius: 8px;
     }
-
     .stButton > button {
         background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
         color: white;
@@ -97,7 +87,6 @@ st.markdown("""
         margin: 0 auto;
         display: block;
     }
-
     .result-card {
         background: white;
         padding: 28px;
@@ -108,7 +97,6 @@ st.markdown("""
         direction: rtl;
         text-align: right;
     }
-
     .term-header {
         display: flex;
         align-items: baseline;
@@ -116,19 +104,16 @@ st.markdown("""
         margin-bottom: 10px;
         flex-wrap: wrap;
     }
-
     .term-arabic {
         color: #1a1a1a;
         font-size: 1.9em;
         font-weight: 800;
     }
-
     .term-english {
         color: #4ecdc4;
         font-size: 1.3em;
         font-weight: 600;
     }
-
     .term-pos {
         background: #e8f5e9;
         color: #2e7d32;
@@ -138,7 +123,6 @@ st.markdown("""
         border-radius: 15px;
         margin-right: auto;
     }
-
     .term-root {
         background: #fff3e0;
         color: #e65100;
@@ -147,14 +131,12 @@ st.markdown("""
         padding: 3px 14px;
         border-radius: 15px;
     }
-
     .section-title {
         color: #2c3e50;
         font-size: 1.05em;
         font-weight: 700;
         margin: 13px 0 7px 0;
     }
-
     .term-definition {
         color: #444;
         font-size: 1.1em;
@@ -164,7 +146,6 @@ st.markdown("""
         border-radius: 7px;
         margin-bottom: 11px;
     }
-
     .term-example {
         color: #555;
         font-size: 1.02em;
@@ -175,7 +156,6 @@ st.markdown("""
         margin-bottom: 11px;
         font-style: italic;
     }
-
     .source-box {
         background: #f1f3f5;
         padding: 9px 11px;
@@ -184,19 +164,16 @@ st.markdown("""
         color: #666;
         margin: 7px 0;
     }
-
     .empty-state {
         text-align: center;
         padding: 55px 18px;
         color: #a8dadc;
         direction: rtl;
     }
-
     .empty-state-icon {
         font-size: 3.5em;
         margin-bottom: 18px;
     }
-
     .empty-state-text {
         font-size: 1.25em;
         margin-bottom: 9px;
@@ -216,65 +193,67 @@ with col2:
     deep_search = st.checkbox("بَحْثٌ فِي التَّعْرِيفِ أَيْضًا")
 st.markdown('</div>', unsafe_allow_html=True)
 
+def safe_get(row, col):
+    if col in row.index and pd.notna(row[col]) and str(row[col]).strip():
+        return str(row[col]).strip()
+    return ""
+
 if df.empty:
     st.warning("لَا تُوجَدُ بَيَانَاتٌ. تَأَكَّدْ مِنْ وُجُودِ مَلَفَّاتِ lexicon_*.csv")
 elif search_button or search:
     if search:
         search_clean = remove_diacritics(search)
-
-        # البحث في اسم المصطلح والمقابل الإنجليزي فقط
         mask = (
             df["المصطلح_بدون_تشكيل"].str.contains(search_clean, na=False, case=False) |
             df["المقابل الإنجليزي"].str.contains(search, na=False, case=False)
         )
-        # توسيع البحث للتعريف إذا اختار المستخدم
-        if deep_search:
+        if deep_search and 'التعريف_بدون_تشكيل' in df.columns:
             mask = mask | df["التعريف_بدون_تشكيل"].str.contains(search_clean, na=False, case=False)
-
         results = df[mask]
 
         if not results.empty:
             st.success(f"عُثِرَ عَلَى {len(results)} نَتِيجَةٍ")
-
             for _, row in results.iterrows():
                 html = '<div class="result-card">'
                 html += '<div class="term-header">'
-                html += f'<span class="term-arabic">{row["المصطلح العربي"]}</span>'
-                html += f'<span class="term-english">{row["المقابل الإنجليزي"]}</span>'
+                html += f'<span class="term-arabic">{safe_get(row, "المصطلح العربي")}</span>'
+                html += f'<span class="term-english">{safe_get(row, "المقابل الإنجليزي")}</span>'
 
-                # قسم الكلام
-                pos_col = "أقسام الكلام" if "أقسام الكلام" in row.index else "الوزن"
-                if pos_col in row.index and pd.notna(row[pos_col]) and str(row[pos_col]).strip():
-                    html += f'<span class="term-pos">{row[pos_col]}</span>'
+                pos = safe_get(row, "أقسام الكلام")
+                if pos:
+                    html += f'<span class="term-pos">{pos}</span>'
 
-                # الجذر - بعيداً عن المصطلح
-                if pd.notna(row["الجذر"]) and str(row["الجذر"]).strip():
-                    html += f'<span class="term-root">{row["الجذر"]}</span>'
+                root = safe_get(row, "الجذر")
+                if root:
+                    html += f'<span class="term-root">{root}</span>'
 
                 html += '</div>'
 
-                html += '<div class="section-title">التَّعْرِيفُ:</div>'
-                html += f'<div class="term-definition">{row["التعريف"]}</div>'
+                definition = safe_get(row, "التعريف")
+                if definition:
+                    html += '<div class="section-title">التَّعْرِيفُ:</div>'
+                    html += f'<div class="term-definition">{definition}</div>'
 
-                if pd.notna(row["المصدر التعريف"]) and str(row["المصدر التعريف"]).strip():
-                    source = f'{row["المصدر التعريف"]}'
-                    if pd.notna(row["صفحة التعريف"]) and str(row["صفحة التعريف"]).strip():
-                        source += f'، ص {row["صفحة التعريف"]}'
-                    html += f'<div class="source-box">{source}</div>'
+                def_source = safe_get(row, "المصدر التعريف")
+                def_page = safe_get(row, "صفحة التعريف")
+                if def_source:
+                    s = def_source
+                    if def_page:
+                        s += f'، ص {def_page}'
+                    html += f'<div class="source-box">{s}</div>'
 
-                if pd.notna(row["المثال"]) and str(row["المثال"]).strip():
+                example = safe_get(row, "المثال")
+                if example:
                     html += '<div class="section-title">مِثَالٌ:</div>'
-                    html += f'<div class="term-example">{row["المثال"]}</div>'
+                    html += f'<div class="term-example">{example}</div>'
 
-                    # إذا كان مصدر المثال فارغاً، يُنسخ تلقائياً من مصدر التعريف
-                    ex_source = row["المصدر المثال"] if pd.notna(row["المصدر المثال"]) and str(row["المصدر المثال"]).strip() else row.get("المصدر التعريف", "")
-                    ex_page = row["صفحة المثال"] if pd.notna(row["صفحة المثال"]) and str(row["صفحة المثال"]).strip() else row.get("صفحة التعريف", "")
-
-                    if pd.notna(ex_source) and str(ex_source).strip():
-                        example_source = f'{ex_source}'
-                        if pd.notna(ex_page) and str(ex_page).strip():
-                            example_source += f'، ص {ex_page}'
-                        html += f'<div class="source-box">{example_source}</div>'
+                    ex_source = safe_get(row, "المصدر المثال") or def_source
+                    ex_page = safe_get(row, "صفحة المثال") or def_page
+                    if ex_source:
+                        s = ex_source
+                        if ex_page:
+                            s += f'، ص {ex_page}'
+                        html += f'<div class="source-box">{s}</div>'
 
                 html += '</div>'
                 st.markdown(html, unsafe_allow_html=True)
