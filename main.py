@@ -40,15 +40,20 @@ def load_data():
     for f in csv_files:
         loaded = False
         for enc in ['utf-8-sig', 'utf-8', 'cp1256', 'windows-1256']:
-            try:
-                d = pd.read_csv(f, encoding=enc)
-                d.columns = [clean_col(c) for c in d.columns]
-                frames.append(d)
-                debug_info.append(f"{f} | ترميز: {enc} | أعمدة: {list(d.columns)}")
-                loaded = True
+            for sep in [',', ';', '\t']:
+                try:
+                    d = pd.read_csv(f, encoding=enc, sep=sep)
+                    if len(d.columns) < 2:
+                        continue
+                    d.columns = [clean_col(c) for c in d.columns]
+                    frames.append(d)
+                    debug_info.append(f"{f} | ترميز: {enc} | فاصل: {repr(sep)} | أعمدة: {len(d.columns)}")
+                    loaded = True
+                    break
+                except Exception:
+                    continue
+            if loaded:
                 break
-            except Exception:
-                continue
         if not loaded:
             debug_info.append(f"{f} | فشل التحميل")
     if not frames:
